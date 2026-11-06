@@ -2,23 +2,13 @@
 //  ContentView.swift
 //  MovieExplorer
 //
-//  Created by user301904 on 11/5/26.
+//  Created for Evaluación Continua PA3 - Pregunta 5
 //
 
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        MovieExplorerView()
     }
-}
-
-#Preview {
-    ContentView()
 }
