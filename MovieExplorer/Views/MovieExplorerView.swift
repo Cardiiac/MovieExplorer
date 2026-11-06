@@ -13,21 +13,23 @@ struct MovieExplorerView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Selector de géneros horizontal (solo visible cuando hay datos)
+                // Selector de sagas (Avengers, Spider-Man, X-Men, etc.)
                 if case .exitoso = viewModel.estado, !viewModel.peliculas.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(viewModel.generosDisponibles, id: \.self) { genero in
-                                let seleccionado = viewModel.generoSeleccionado == genero
-                                Text(genero)
+                            ForEach(viewModel.sagasDisponibles, id: \.self) { saga in
+                                let seleccionado = viewModel.sagaSeleccionada == saga
+                                Text(saga)
                                     .font(.subheadline.bold())
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 7)
-                                    .background(seleccionado ? Color.blue : Color.gray.opacity(0.15))
+                                    .background(seleccionado ? Color.red : Color.gray.opacity(0.15))
                                     .foregroundStyle(seleccionado ? Color.white : Color.primary)
                                     .clipShape(Capsule())
                                     .onTapGesture {
-                                        viewModel.generoSeleccionado = genero
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            viewModel.sagaSeleccionada = saga
+                                        }
                                     }
                             }
                         }
@@ -44,7 +46,7 @@ struct MovieExplorerView: View {
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.3)
-                            Text("Cargando catálogo de películas...")
+                            Text("Cargando películas de Marvel...")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -76,7 +78,7 @@ struct MovieExplorerView: View {
                             } actions: {
                                 Button("Limpiar búsqueda") {
                                     viewModel.textoBusqueda = ""
-                                    viewModel.generoSeleccionado = "Todos"
+                                    viewModel.sagaSeleccionada = "Todos"
                                 }
                                 .buttonStyle(.bordered)
                             }
@@ -93,7 +95,7 @@ struct MovieExplorerView: View {
             .searchable(
                 text: $viewModel.textoBusqueda,
                 placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: "Buscar películas..."
+                prompt: "Buscar Avengers, Spider-Man, X-Men..."
             )
             .toolbar {
                 // Menú para facilitar la toma de evidencias del examen

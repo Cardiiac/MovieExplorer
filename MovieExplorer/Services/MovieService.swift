@@ -27,39 +27,74 @@ enum NetworkError: LocalizedError {
     }
 }
 
+// Estructura envoltorio para los resultados de búsqueda de la API
+private struct TVMazeSearchItem: Codable {
+    let show: Movie
+}
+
 protocol MovieServiceProtocol {
     func obtenerPeliculas() async throws -> [Movie]
 }
 
 final class MovieService: MovieServiceProtocol {
-    private let endpointURL = "https://api.tvmaze.com/shows"
+    // Lista de sagas favoritas solicitadas: Avengers, Spider-Man, X-Men, Iron Man, Wolverine
+    private let categoriasSuperheroes = [
+        "avengers",
+        "spider-man",
+        "x-men",
+        "iron man",
+        "wolverine"
+    ]
 
     func obtenerPeliculas() async throws -> [Movie] {
-        guard let url = URL(string: endpointURL) else {
+        var peliculasUnicas: [Int: Movie] = [:]
+
+        // Descarga concurrente mediante TaskGroup para mayor velocidad
+        try await withThrowingTaskGroup(of: [Movie].self) { group in
+            for termino in categoriasSuperheroes {
+                group.addTask {
+                    return try await self.buscarPeliculas(termino: termino)
+                }
+            }
+
+            for try await resultados in group {
+                for pelicula in resultados {
+                    // Solo incluimos títulos que tengan póster y no estén repetidos
+                    if pelicula.image != nil && peliculasUnicas[pelicula.id] == nil {
+                        // Filtramos títulos no relacionados
+                        let nombreMin = pelicula.name.lowercased()
+                        if !nombreMin.contains("food") && !nombreMin.contains("funko") {
+                            peliculasUnicas[pelicula.id] = pelicula
+                        }
+                    }
+                }
+            }
+        }
+
+        let listaFinal = Array(peliculasUnicas.values).sorted {
+            ($0.rating?.average ?? 0) > ($1.rating?.average ?? 0)
+        }
+
+        if listaFinal.isEmpty {
+            throw NetworkError.sinConexion
+        }
+
+        return listaFinal
+    }
+
+    private func buscarPeliculas(termino: String) async throws -> [Movie] {
+        guard let terminoCodificado = termino.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://api.tvmaze.com/search/shows?q=\(terminoCodificado)") else {
             throw NetworkError.urlInvalida
         }
 
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
 
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.respuestaServidorInvalida(codigo: 0)
-            }
-
-            guard (200...299).contains(httpResponse.statusCode) else {
-                throw NetworkError.respuestaServidorInvalida(codigo: httpResponse.statusCode)
-            }
-
-            let peliculas = try JSONDecoder().decode([Movie].self, from: data)
-            return peliculas
-        } catch let error as DecodingError {
-            print("Decoding Error: \(error)")
-            throw NetworkError.errorDecodificacion
-        } catch let error as URLError {
-            print("URL Error: \(error)")
-            throw NetworkError.sinConexion
-        } catch {
-            throw error
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.respuestaServidorInvalida(codigo: 0)
         }
+
+        let items = try JSONDecoder().decode([TVMazeSearchItem].self, from: data)
+        return items.map { $0.show }
     }
 }

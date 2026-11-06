@@ -22,7 +22,10 @@ final class MovieExplorerViewModel {
 
     // MARK: - Filtros y Búsqueda Local
     var textoBusqueda: String = ""
-    var generoSeleccionado: String = "Todos"
+    var sagaSeleccionada: String = "Todos"
+
+    // Sagas de superhéroes favoritas para filtrado rápido
+    let sagasDisponibles = ["Todos", "Avengers", "Spider-Man", "X-Men", "Iron Man", "Wolverine"]
 
     // Servicio de red inyectado
     private let servicio: MovieServiceProtocol
@@ -31,27 +34,19 @@ final class MovieExplorerViewModel {
         self.servicio = servicio
     }
 
-    // MARK: - Géneros únicos disponibles
-    var generosDisponibles: [String] {
-        var setGeneros = Set<String>()
-        for pelicula in peliculas {
-            for genero in pelicula.genres {
-                setGeneros.insert(genero)
-            }
-        }
-        return ["Todos"] + Array(setGeneros).sorted()
-    }
-
-    // MARK: - Colección filtrada (Búsqueda local y por género)
+    // MARK: - Colección filtrada (Búsqueda local y por saga)
     var peliculasFiltradas: [Movie] {
         var resultado = peliculas
 
-        // Filtro por género seleccionado
-        if generoSeleccionado != "Todos" {
-            resultado = resultado.filter { $0.genres.contains(generoSeleccionado) }
+        // Filtro por saga
+        if sagaSeleccionada != "Todos" {
+            let saga = sagaSeleccionada.lowercased()
+            resultado = resultado.filter {
+                $0.name.lowercased().contains(saga)
+            }
         }
 
-        // Filtro de búsqueda local por texto (título o sinopsis)
+        // Filtro de búsqueda local por texto
         let query = textoBusqueda.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             resultado = resultado.filter {
@@ -75,11 +70,11 @@ final class MovieExplorerViewModel {
     func cargarPeliculas(forzarError: Bool = false) async {
         estado = .cargando
 
-        // Simula una pequeña pausa para que el estado de carga sea visible
-        try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 segundos
+        // Pequeña pausa para visualización del spinner de carga
+        try? await Task.sleep(nanoseconds: 600_000_000)
 
         if forzarError {
-            self.estado = .error(mensaje: "No se pudo conectar con el servidor remoto (Error 503). Revisa tu conexión a internet.")
+            self.estado = .error(mensaje: "No se pudo conectar con el servidor de Marvel. Revisa tu conexión a internet.")
             return
         }
 
